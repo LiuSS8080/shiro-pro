@@ -1,0 +1,67 @@
+使用代码方式实现的步骤
+1.在pom.xml中添加jar包
+2.在main/java中自定义Realm，实现Realm接口
+package com.woniuxy.realm;
+
+import org.apache.shiro.authc.*;
+import org.apache.shiro.realm.Realm;
+
+public class MyRealm implements Realm {
+    @Override
+    public String getName() {
+        return "myRealm";
+    }
+
+    @Override
+    public boolean supports(AuthenticationToken authenticationToken) {
+        return authenticationToken instanceof UsernamePasswordToken;
+    }
+
+    @Override
+    public AuthenticationInfo getAuthenticationInfo(AuthenticationToken authenticationToken) throws AuthenticationException {
+        //获取用户名
+        String userName=(String)authenticationToken.getPrincipal();
+        //获取密码
+        String password=new String((char[]) authenticationToken.getCredentials());
+        if(!"giles".equals(userName)){
+            throw new UnknownAccountException("没有该账户！");
+        }
+        if(!"123456".equals(password)){
+            throw new IncorrectCredentialsException("密码有误！");
+        }
+        SimpleAuthenticationInfo info=new SimpleAuthenticationInfo(userName,password,getName());
+       return info;
+    }
+}
+3.编写测试方法
+public class AppTest
+{
+    @Test
+    public void test1(){
+        //创建SecurityManager对象
+        DefaultSecurityManager securityManager= new DefaultSecurityManager();
+        //创建一个认证器
+        ModularRealmAuthenticator authenticator=new ModularRealmAuthenticator();
+        authenticator.setAuthenticationStrategy(new AtLeastOneSuccessfulStrategy());
+        securityManager.setAuthenticator(authenticator);
+        //创建授权对象
+        ModularRealmAuthorizer authorizer=new ModularRealmAuthorizer();
+        authorizer.setPermissionResolver(new WildcardPermissionResolver());
+        securityManager.setAuthorizer(authorizer);
+        //设置Realm
+        securityManager.setRealm(new MyRealm());
+
+        //通过SecurtyUtils设置SeucrityManager
+        SecurityUtils.setSecurityManager(securityManager);
+        Subject subject=SecurityUtils.getSubject();
+        UsernamePasswordToken token=new UsernamePasswordToken("giles","123456");
+        try {
+            subject.login(token);
+            if(subject.isAuthenticated()){
+                System.out.println("登陆成功！");
+            }
+        } catch (AuthenticationException e) {
+            e.printStackTrace();
+        }
+    }
+}
